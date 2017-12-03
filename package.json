@@ -1,0 +1,8 @@
+{
+  "name": "CSS-bot",
+  "version": "1.0.0",
+  "description": "CSS discord bot",
+  "main": "bot.js",
+  "author": "DinkieShy",
+  "dependencies": {}
+}
