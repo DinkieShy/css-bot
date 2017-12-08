@@ -1,8 +1,10 @@
 {
-  "name": "CSS-bot",
+  "name": "DinkBot",
   "version": "1.0.0",
-  "description": "CSS discord bot",
+  "description": "HackDay project 2017",
   "main": "bot.js",
   "author": "DinkieShy",
-  "dependencies": {}
+  "dependencies": {
+    "discord.js": "^11.2.1"
+  }
 }
