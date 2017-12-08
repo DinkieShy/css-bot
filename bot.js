@@ -107,30 +107,30 @@ client.on('message', function(message){
 			case 'dinkbothelp':
 				message.channel.send("Commands:\n!DinkbotHelp - display this menu\n!bf [insert brainfuck here]  interprets brainfuck! Try converting a string here: https://copy.sh/brainfuck/text.html !\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!nudge @user - Sends the tagged user(s) a ping in dm, in case they muted the channel\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around");
 			break;
-			case 'bf':
-				result = '';
-				code = message.content.toLowerCase().slice(4, message.content.toLowerCase().length);
-				console.log('code: ' + code);
-				var script = execFile(__dirname  + '/scripts/BFInterpreter.exe', [code]);
-				script.stdout.on('data', function(data, err){
-					if(err){
-						console.log('data in err: ' + err);
-					}
-					if(data != undefined){
-						result += data.toString();
-						console.log(('result so far: ' + result));
-						console.log(('data in: ' + data));
-					}
-				});
-				script.on('close', function(err){
-					if(err){
-						console.log(('data out err: ' + err));
-					}
-					console.log(('result: ' + typeof result + " " + result));
-					console.log('ready to output');
-					message.channel.send(result);
-				});
-			break;
+			// case 'bf':
+				// result = '';
+				// code = message.content.toLowerCase().slice(4, message.content.toLowerCase().length);
+				// console.log('code: ' + code);
+				// var script = execFile(__dirname  + '/scripts/BFInterpreter.exe', [code]);
+				// script.stdout.on('data', function(data, err){
+					// if(err){
+						// console.log('data in err: ' + err);
+					// }
+					// if(data != undefined){
+						// result += data.toString();
+						// console.log(('result so far: ' + result));
+						// console.log(('data in: ' + data));
+					// }
+				// });
+				// script.on('close', function(err){
+					// if(err){
+						// console.log(('data out err: ' + err));
+					// }
+					// console.log(('result: ' + typeof result + " " + result));
+					// console.log('ready to output');
+					// message.channel.send(result);
+				// });
+			// break;
 			case 'echo':
 				newMessage = message.content.toLowerCase().slice(6, message.content.toLowerCase().length);
 				message.channel.send(newMessage);
