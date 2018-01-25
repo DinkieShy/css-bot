@@ -1,5 +1,5 @@
 # css-bot
-Bot for the Univesity of Lincoln Computer Science Society discord
+Bot for the University of Lincoln Computer Science Society discord
 
 -----To Do-----
 !poll option1 option2... - Send a message afterwards with the current scores ranked in order of votes. Get votes by reactions
@@ -8,3 +8,4 @@ Bot for the Univesity of Lincoln Computer Science Society discord
 
 !remind - ping users that react with certain emoji in DM to remind of an event (css-comittee role can remind everyone that reacted but non css-comittee can only remind themselves)
 
+!StudentFinance - print the date of the next student finance payment and the time left from https://studentfinancecountdown.com
