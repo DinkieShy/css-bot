@@ -18,6 +18,20 @@ client.on('message', function(message){
        
         args = args.splice(1);
         switch(cmd){
+			case 'studentfinance':
+				http.get('https://studentfinancecountdown.com/json/left/', function(res){
+					var body = '';
+					res.on('data', function(chunk){
+						body += chunk;
+					});
+					res.on('end', function(){
+						message.channel.send('The next student finance payment is in ' + JSON.parse(body) + ' days!');
+					});
+				}).on('error', function(e){
+					console.log('Got an error: ', e);
+					message.channel.send('Uh oh, something went wrong! Tell Dinkie, Zach or Adam to check the console!');
+				});
+			break;
 			case 'changerole':
 				if(message.content.split(' ')[1]){
 					//Check if the bot is allowed to use the requested role
