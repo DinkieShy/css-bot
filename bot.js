@@ -4,6 +4,7 @@ var re = /([0-9]+)d([0-9]+)([\+?|\-?]?[0-9]*)/;
 var acceptedRoleNames = ['TestRole1', 'TestRole2', 'TestRole3'];
 var auth = require('./auth.json');
 var execFile = require('child_process').execFile;
+var https = require('https');
 
 client.login(auth.token);
 
@@ -19,13 +20,13 @@ client.on('message', function(message){
         args = args.splice(1);
         switch(cmd){
 			case 'studentfinance':
-				http.get('https://studentfinancecountdown.com/json/left/', function(res){
+				https.get('https://studentfinancecountdown.com/json/left/', function(res){
 					var body = '';
 					res.on('data', function(chunk){
 						body += chunk;
 					});
 					res.on('end', function(){
-						message.channel.send('The next student finance payment is in ' + JSON.parse(body) + ' days!');
+						message.channel.send('The next student finance payment is in ' + JSON.parse(body).payload['days'] + ' days!');
 					});
 				}).on('error', function(e){
 					console.log('Got an error: ', e);
