@@ -8,4 +8,5 @@ Bot for the University of Lincoln Computer Science Society discord
 
 !remind - ping users that react with certain emoji in DM to remind of an event (css-comittee role can remind everyone that reacted but non css-comittee can only remind themselves)
 
-!StudentFinance - print the date of the next student finance payment and the time left from https://studentfinancecountdown.com
+~!StudentFinance - print the date of the next student finance payment and the time left from https://studentfinancecountdown.com~
+
