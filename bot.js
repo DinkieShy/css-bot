@@ -20,17 +20,19 @@ client.on('message', function(message){
         args = args.splice(1);
         switch(cmd){
 			case 'studentfinance':
-				https.get('https://studentfinancecountdown.com/json/left/', function(res){
+				https.get('https://studentfinancecountdown.com/json/left/', function(res){ //ping the url and get a response
 					var body = '';
-					res.on('data', function(chunk){
+					res.on('data', function(chunk){ //Compile chunks, data not always received at the same time
 						body += chunk;
 					});
-					res.on('end', function(){
+					res.on('end', function(){ //Print the message once all data collected
 						message.channel.send('The next student finance payment is in ' + JSON.parse(body).payload['days'] + ' days!');
+						//JSON.parse(body).payload returns an array, [seconds, days]
 					});
 				}).on('error', function(e){
 					console.log('Got an error: ', e);
 					message.channel.send('Uh oh, something went wrong! Tell Dinkie, Zach or Adam to check the console!');
+					//Nothing should go wrong on the bot's end, so hopefully Dinkie doesn't need to hear about this!
 				});
 			break;
 			case 'changerole':
@@ -120,7 +122,7 @@ client.on('message', function(message){
 				}
 			break;
 			case 'dinkbothelp':
-				message.channel.send("Commands:\n!DinkbotHelp - display this menu\n!bf [insert brainfuck here]  interprets brainfuck! Try converting a string here: https://copy.sh/brainfuck/text.html !\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!nudge @user - Sends the tagged user(s) a ping in dm, in case they muted the channel\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around");
+				message.channel.send("Commands:\n!DinkbotHelp - display this menu\n!bf [insert brainfuck here]  interprets brainfuck! Try converting a string here: https://copy.sh/brainfuck/text.html !\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!nudge @user - Sends the tagged user(s) a ping in dm, in case they muted the channel\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around\n!studentfinance - How many days are left until the next student finance payment?");
 			break;
 			// case 'bf':
 				// result = '';
