@@ -53,19 +53,18 @@ client.on('message', function(message){
 					//Nothing should go wrong on the bot's end, so hopefully Dinkie doesn't need to hear about this!
 				});
 			break;
+
 			case 'changerole':
 				if(message.content.split(' ')[1]){
 					//Check if the bot is allowed to use the requested role
 					console.log(message.content.split(' ')[1]);
-					console.log('Checking if I can assign the role');
 					var requestedRole = message.guild.roles.filter(g=>g.name == message.content.split(' ')[1]);
 					var guildRolesKeyArray = message.guild.roles.keyArray();
-					if(requestedRole.keyArray().length == 0 || !acceptedRoleNames.includes(message.content.split(' ')[1])){
-						message.reply('that role either doesn\'t exist or I\'m not allowed to assign it. The accepted roles are: ' + acceptedRoleNames.toString().replace(',', ', '));
+					if(requestedRole.keyArray().length == 0){
+						message.reply("That role either doesn't exist or I'm not allowed to assign it. The accepted roles are: " + acceptedRoleNames);
 						return;
 					}
 					//Check if the user already has the requested role
-					console.log('Checking if I have the role');
 					var rolesAlreadyOwned = message.member.roles;
 					for(var i = 0; i < rolesAlreadyOwned.keyArray().length; i++){
 						console.log(rolesAlreadyOwned.get(rolesAlreadyOwned.keyArray()[i]).name + ": " + requestedRole.get(requestedRole.keyArray()[0]).name);
@@ -75,7 +74,6 @@ client.on('message', function(message){
 						}
 					}
 					//remove the current role and assign the requested one
-					console.log('assigning the new role');
 					for(var i = 0; i < guildRolesKeyArray.length; i++){
 						if(acceptedRoleNames.includes(message.guild.roles.get(guildRolesKeyArray[i]).name) && rolesAlreadyOwned.keyArray().includes(guildRolesKeyArray[i]) && requestedRole.keyArray()[0] != guildRolesKeyArray[i]){
 							message.member.removeRole(message.guild.roles.get(guildRolesKeyArray[i]));
@@ -88,19 +86,19 @@ client.on('message', function(message){
 					message.reply('enjoy your new role!');
 				}
 				else{
-					message.reply('the accepted roles are: ' + acceptedRoleNames.toString().replace(',', ', '));
+					message.channel.send("The available roles are: " + acceptedRoleNames);
 				}
 			break;
-			//case 'shutdown':
-			//	if(message.author.username == "Dinkie Shy"){
-			//		message.channel.send("Shutting down");
-			//		console.log("Shutting down");
-			//		setTimeout(function(){process.exit()}, 3000);
-			//	}
-			//	else{
-			//		message.channel.send("Only Dinkie can do that!");
-			//	}
-			//break;
+			case 'restart':
+				if(message.author.username == "Dinkie Shy" || ){
+					message.channel.send("Shutting down");
+					console.log("Shutting down");
+					setTimeout(function(){process.exit()}, 3000);
+				}
+				else{
+					message.channel.send("Only Dinkie can do that!");
+				}
+			break;
             case 'ping':
                 message.channel.send('Pong!');
             break;
@@ -135,12 +133,72 @@ client.on('message', function(message){
 			case 'help':
 				message.channel.send(helpMessage);
 			break;
-			// case 'echo':
-				// newMessage = message.content.toLowerCase().slice(6, message.content.toLowerCase().length);
-				// message.channel.send(newMessage);
-			// break;
+			case 'poll':
+				if(pollMessage == ""){
+					pollAuthor = message.author.username;
+					pollFunction(message);
+				}
+				else{
+					message.channel.send("There's already an active poll!");
+				}
+			break;
+			case 'endpoll':
+				console.log('end poll');
+				if(message.author.username == pollAuthor){
+					console.log('ending poll');
+					newMessage = "The poll has ended and the results are in!\n```" + poll[0] + "```\n";
+					for(var i = 0; i < poll.length-1; i++){
+						newMessage += numToEmoji[i] + "`: " + poll[i+1] + " has: " + options[i.toString() + "%E2%83%A3"] + " votes!`\n";
+					}
+					message.channel.send(newMessage);
+					pollMessage = "";
+				}
+			break;
          }
      }
+});
+
+var options = [];
+var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+var pollMessage = "";
+var pollAuthor;
+var poll;
+
+function pollFunction(message){
+	poll = message.content.replace("!poll ", "").split('\n');
+	var question = poll[0];
+	options = [];
+	var newMessage = 'React with the emoji of the option you choose!\n```' + question + "```\n";
+	if(poll.length > 11){
+		message.reply('Error: too many options! You can use a maximum of 10!');
+	}
+	else{
+		var pollReactions;
+		for(var i = 0; i < poll.length-1; i++){
+			options[i.toString() + "%E2%83%A3"] = 0;
+			newMessage += numToEmoji[i] + '`: ' + poll[i+1] + "`\n";
+		}
+		console.log('Created poll:\n' + newMessage);
+		message.channel.send(newMessage).then(newPollMessage => {
+			pollMessage = newPollMessage;
+		});
+	}
+}
+
+client.on('messageReactionAdd', (reaction, user) =>{
+	console.log('reaction added!');
+	console.log(reaction.emoji.identifier);
+	if(reaction.message.content = pollMessage){
+		options[reaction.emoji.identifier] += 1;
+	}
+});
+
+client.on('messageReactionRemove', (reaction, user) =>{
+	console.log('reaction added!');
+	console.log(reaction.emoji.identifier);
+	if(reaction.message.content = pollMessage){
+		options[reaction.emoji.identifier] -= 1;
+	}
 });
 
 function rollDie(numberOfDice, numberOfSides, modifier){
