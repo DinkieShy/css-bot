@@ -1,10 +1,11 @@
 const Discord = require("discord.js");
 const client = new Discord.Client();
 var re = /([0-9]+)d([0-9]+)([\+?|\-?]?[0-9]*)/;
-var acceptedRoleNames = ['TestRole1', 'TestRole2', 'TestRole3'];
+var acceptedRoleNames = ['first-year', 'second-year', 'third-year', 'postgraduate', 'alumni', 'noncompsci'];
 var auth = require('./auth.json');
 var execFile = require('child_process').execFile;
 var https = require('https');
+var helpMessage = "Commands:\n!DinkbotHelp  or !help - display this menu\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around\n!studentfinance - How many days are left until the next student finance payment?\n\nCommands are *not* case sensitive!";
 
 client.login(auth.token);
 
@@ -16,9 +17,26 @@ client.on('message', function(message){
 	if (message.content.toLowerCase().substring(0, 1) == '!'){
         var args = message.content.toLowerCase().substring(1).split(' ');
         var cmd = args[0];
-       
+
         args = args.splice(1);
         switch(cmd){
+			case 'poll':
+				var poll = message.content.replace("!poll ", "").split('\n');
+				var question = poll[0];
+				var options = [];
+				var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+				var newMessage = question + '\nReact with the emoji of the option you choose!';
+				if(poll.length > 10){
+					message.reply('Error: too many options! You can use a maximum of 9!');
+					break;
+				}
+				for(var i = 0; i < poll.length-1; i++){
+					options.push([poll[i+1], 0]);
+					newMessage += '\n' + numToEmoji[i+1] + ': ' + poll[i+1];
+				}
+				message.channel.send(newMessage);
+
+			break;
 			case 'studentfinance':
 				https.get('https://studentfinancecountdown.com/json/left/', function(res){ //ping the url and get a response
 					var body = '';
@@ -35,6 +53,7 @@ client.on('message', function(message){
 					//Nothing should go wrong on the bot's end, so hopefully Dinkie doesn't need to hear about this!
 				});
 			break;
+
 			case 'changerole':
 				if(message.content.split(' ')[1]){
 					//Check if the bot is allowed to use the requested role
@@ -70,21 +89,8 @@ client.on('message', function(message){
 					message.channel.send("The available roles are: " + acceptedRoleNames);
 				}
 			break;
-			// case 'nudge':
-				// var ii;
-				// if(message.isMemberMentioned){
-					// console.log('Nudge');
-					// var userIDs = message.mentions.users.keyArray();
-					// for(var i = 0; i < userIDs.length; i++){
-						// message.mentions.users.get(userIDs[i]).send(`${message.author} wants your attention in ${message.channel}!`);
-					// }
-				// }
-				// else{
-					// message.channel.send('You need to tag someone!');
-				// }
-			// break;
-			case 'shutdown':
-				if(message.author.username == "Dinkie Shy"){
+			case 'restart':
+				if(message.author.username == "Dinkie Shy" || message.member.roles.find("name", "css-committee") != undefined){
 					message.channel.send("Shutting down");
 					console.log("Shutting down");
 					setTimeout(function(){process.exit()}, 3000);
@@ -122,38 +128,77 @@ client.on('message', function(message){
 				}
 			break;
 			case 'dinkbothelp':
-				message.channel.send("Commands:\n!DinkbotHelp - display this menu\n!bf [insert brainfuck here]  interprets brainfuck! Try converting a string here: https://copy.sh/brainfuck/text.html !\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!nudge @user - Sends the tagged user(s) a ping in dm, in case they muted the channel\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around\n!studentfinance - How many days are left until the next student finance payment?");
+				message.channel.send(helpMessage);
 			break;
-			// case 'bf':
-				// result = '';
-				// code = message.content.toLowerCase().slice(4, message.content.toLowerCase().length);
-				// console.log('code: ' + code);
-				// var script = execFile(__dirname  + '/scripts/BFInterpreter.exe', [code]);
-				// script.stdout.on('data', function(data, err){
-					// if(err){
-						// console.log('data in err: ' + err);
-					// }
-					// if(data != undefined){
-						// result += data.toString();
-						// console.log(('result so far: ' + result));
-						// console.log(('data in: ' + data));
-					// }
-				// });
-				// script.on('close', function(err){
-					// if(err){
-						// console.log(('data out err: ' + err));
-					// }
-					// console.log(('result: ' + typeof result + " " + result));
-					// console.log('ready to output');
-					// message.channel.send(result);
-				// });
-			// break;
-			case 'echo':
-				newMessage = message.content.toLowerCase().slice(6, message.content.toLowerCase().length);
-				message.channel.send(newMessage);
+			case 'help':
+				message.channel.send(helpMessage);
+			break;
+			case 'poll':
+				if(pollMessage == ""){
+					pollAuthor = message.author.username;
+					pollFunction(message);
+				}
+				else{
+					message.channel.send("There's already an active poll!");
+				}
+			break;
+			case 'endpoll':
+				console.log('end poll');
+				if(message.author.username == pollAuthor){
+					console.log('ending poll');
+					newMessage = "The poll has ended and the results are in!\n```" + poll[0] + "```\n";
+					for(var i = 0; i < poll.length-1; i++){
+						newMessage += numToEmoji[i] + "`: " + poll[i+1] + " has: " + options[i.toString() + "%E2%83%A3"] + " votes!`\n";
+					}
+					message.channel.send(newMessage);
+					pollMessage = "";
+				}
 			break;
          }
      }
+});
+
+var options = [];
+var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+var pollMessage = "";
+var pollAuthor;
+var poll;
+
+function pollFunction(message){
+	poll = message.content.replace("!poll ", "").split('\n');
+	var question = poll[0];
+	options = [];
+	var newMessage = 'React with the emoji of the option you choose!\n```' + question + "```\n";
+	if(poll.length > 11){
+		message.reply('Error: too many options! You can use a maximum of 10!');
+	}
+	else{
+		var pollReactions;
+		for(var i = 0; i < poll.length-1; i++){
+			options[i.toString() + "%E2%83%A3"] = 0;
+			newMessage += numToEmoji[i] + '`: ' + poll[i+1] + "`\n";
+		}
+		console.log('Created poll:\n' + newMessage);
+		message.channel.send(newMessage).then(newPollMessage => {
+			pollMessage = newPollMessage;
+		});
+	}
+}
+
+client.on('messageReactionAdd', (reaction, user) =>{
+	console.log('reaction added!');
+	console.log(reaction.emoji.identifier);
+	if(reaction.message.content = pollMessage){
+		options[reaction.emoji.identifier] += 1;
+	}
+});
+
+client.on('messageReactionRemove', (reaction, user) =>{
+	console.log('reaction added!');
+	console.log(reaction.emoji.identifier);
+	if(reaction.message.content = pollMessage){
+		options[reaction.emoji.identifier] -= 1;
+	}
 });
 
 function rollDie(numberOfDice, numberOfSides, modifier){
