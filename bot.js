@@ -90,7 +90,7 @@ client.on('message', function(message){
 				}
 			break;
 			case 'restart':
-				if(message.author.username == "Dinkie Shy" || ){
+				if(message.author.username == "Dinkie Shy" || message.member.roles.find("name", "css-committee") != undefined){
 					message.channel.send("Shutting down");
 					console.log("Shutting down");
 					setTimeout(function(){process.exit()}, 3000);
