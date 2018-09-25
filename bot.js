@@ -5,7 +5,7 @@ var acceptedRoleNames = ['first-year', 'second-year', 'third-year', 'postgraduat
 var auth = require('./auth.json');
 var execFile = require('child_process').execFile;
 var https = require('https');
-var helpMessage = "Commands:\n!DinkbotHelp  or !help - display this menu\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around\n!studentfinance - How many days are left until the next student finance payment?\n\nCommands are *not* case sensitive!";
+var helpMessage = "Commands:\n!DinkbotHelp  or !help - display this menu\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around\n!studentfinance - How many days are left until the next student finance payment?\n!poll - get info on how to make a poll!\n\nCommands are *not* case sensitive!";
 
 client.login(auth.token);
 
@@ -21,7 +21,10 @@ client.on('message', function(message){
         args = args.splice(1);
         switch(cmd){
 			case 'poll':
-				if(pollMessage == ""){
+				if(args.length == 0){
+					message.channel.send("How to use !poll:\n\nType !poll followed by your question, i.e. \"!poll is this command awesome?\"\nThen add up to 10 options on new lines, for example\n\"!poll is this command awesome?\nYes\nYes\nYes\nYes\"\n\nThen, when you're done, type !endpoll to count up the votes!");
+				}
+				else if(pollMessage == ""){
 					pollAuthor = message.author.username;
 					pollFunction(message);
 				}
