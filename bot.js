@@ -232,3 +232,57 @@ function rollDie(numberOfDice, numberOfSides, modifier){
 	}
 	return [toSend, total];
 }
+
+client.on('messageUpdate', function(oldMessage, newMessage){ //Audit log
+	auditChannel = oldMessage.guild.channels.find('name', 'audit-log');
+	if(auditChannel != undefined){
+		var time = "";
+		time += newMessage.createdAt.getDate() + "/" + (newMessage.createdAt.getMonth()+1);
+		time += " at " + newMessage.createdAt.getHours() + ":" + newMessage.createdAt.getMinutes() + ":" + newMessage.createdAt.getSeconds();
+		auditChannel.send({
+			embed:{
+				color: 4947400,
+				author:{
+					name: oldMessage.author.username,
+					icon_url: oldMessage.author.avatarURL
+				},
+				title: `Message Edited on ${time} in ${newMessage.channel.name}`,
+				fields: [
+					{
+						name: "Old message",
+						value: oldMessage.content
+					},
+					{
+						name: "New message",
+						value: newMessage.content
+					}
+				]
+			}
+		});
+	}
+});
+
+client.on('messageDelete', function(message){
+	auditChannel = message.guild.channels.find('name', 'audit-log');
+	if(auditChannel != undefined && message.author.bot == false){
+		var time = "";
+		time += message.createdAt.getDate() + "/" + (message.createdAt.getMonth()+1);
+		time += " at " + message.createdAt.getHours() + ":" + message.createdAt.getMinutes() + ":" + message.createdAt.getSeconds();
+		auditChannel.send({
+			embed:{
+				color: 4947400,
+				author:{
+					name: message.author.username,
+					icon_url: message.author.avatarURL
+				},
+				title: `Message Deleted on ${time} in ${message.channel.name}`,
+				fields: [
+					{
+						name: "Message content",
+						value: message.content
+					}
+				]
+			}
+		});
+	}
+});
