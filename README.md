@@ -20,7 +20,8 @@ Changes current users role to the requested role, can only be changed to specifi
 
 ## !studentfinance
 `!studentfinance`  
-Print the date of the next student finance payment and the time left from https://studentfinancecountdown.com
+Print the date of the next student finance payment and the time left from [studentfinancecountdown.com](https://studentfinancecountdown.com) with an embed generated from [leovoel/embed-visualizer](https://leovoel.github.io/embed-visualizer/)  
+![Screenshot of !studentfinance output](screenshots/studentfinancecountdown.png)
 
 ## !timer
 `!timer [end time] [reminder interval]`  
