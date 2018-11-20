@@ -2,7 +2,7 @@
 Bot for the University of Lincoln Computer Science Society discord
 
 -----To Do-----
-!poll option1 option2... - Send a message afterwards with the current scores ranked in order of votes. Get votes by reactions
+~!poll option1 option2... - Send a message afterwards with the current scores ranked in order of votes. Get votes by reactions~
 
 !timer [end time] [reminder interval] - Pings a reminder with time left every [reminder interval] until [end time]. [end time] could be many formats (dd/mm/yy or hours:minutes etc.) so need to overload !timer function (limit to css-comittee role)
 
