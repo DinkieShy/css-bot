@@ -51,8 +51,24 @@ client.on('message', function(message){
 						body += chunk;
 					});
 					res.on('end', function(){ //Print the message once all data collected
-						message.channel.send('The next student finance payment is in ' + JSON.parse(body).payload['days'] + ' days!');
-						//JSON.parse(body).payload returns an array, [seconds, days]
+						const embed = {
+						  "title": "Which will be " + JSON.parse(body).payload['next'],
+						  "description": JSON.parse(body).payload['after'],
+						  "url": "https://studentfinancecountdown.com",
+						  "color": 11344330,
+						  "thumbnail": {
+						    "url": "https://place-hold.it/160/36383D/ff40ff?text=" + JSON.parse(body).payload['days'] + "&fontsize=85"
+						  },
+						  "author": {
+						    "name": "Next payment is in " + JSON.parse(body).payload['days'] + " days!",
+						    "url": "https://studentfinancecountdown.com",
+						    "icon_url": "https://studentfinancecountdown.com/assets/icon.png"
+						  },
+						  "footer": {
+						    "text": "studentfinancecountdown.com"
+						  }
+						};
+						message.channel.send({ embed });
 					});
 				}).on('error', function(e){
 					console.log('Got an error: ', e);
