@@ -15,33 +15,25 @@ client.on('ready', function(){
 
 client.on('message', function(message){
 	if (message.content.toLowerCase().substring(0, 1) == '!'){
-        var args = message.content.toLowerCase().substring(1).split(' ');
-        var cmd = args[0];
-
-        args = args.splice(1);
-        switch(cmd){
+    var args = message.content.toLowerCase().substring(1).split(' ');
+    var cmd = args[0];
+    args = args.splice(1);
+    switch(cmd){
 			case 'poll':
 				if(args.length == 0){
 					message.channel.send("How to use !poll:\n\nType !poll followed by your question, i.e. \"!poll is this command awesome?\"\nThen add up to 10 options on new lines, for example\n\"!poll is this command awesome?\nYes\nYes\nYes\nYes\"\n\nThen, when you're done, type !endpoll to count up the votes!");
 				}
-				else if(pollMessage == ""){
-					pollAuthor = message.author.username;
-					pollFunction(message);
-				}
 				else{
-					message.channel.send("There's already an active poll!");
-				}
-			break;
-			case 'endpoll':
-				console.log('end poll');
-				if(message.author.username == pollAuthor){
-					console.log('ending poll');
-					newMessage = "The poll has ended and the results are in!\n```" + poll[0] + "```\n";
-					for(var i = 0; i < poll.length-1; i++){
-						newMessage += numToEmoji[i] + "`: " + poll[i+1] + " has: " + options[i.toString() + "%E2%83%A3"] + " votes!`\n";
+					var newPoll = new Poll(message);
+					if(activePolls[message.author.id] == undefined){
+						activePolls[message.author.id] = [newPoll];
 					}
-					message.channel.send(newMessage);
-					pollMessage = "";
+					else if(activePolls[message.author.id].length > 10){
+						message.channel.send("You have too many active polls, " + message.author.username + "!\nTry ending a few of them with !endpoll");
+					}
+					else{
+						activePolls[message.author.id].push(newPoll);
+					}
 				}
 			break;
 			case 'studentfinance':
@@ -122,9 +114,9 @@ client.on('message', function(message){
 					message.channel.send("Only Dinkie can do that!");
 				}
 			break;
-            case 'ping':
-                message.channel.send('Pong!');
-            break;
+      case 'ping':
+        message.channel.send("My current response time is: " + client.ping + "ms");
+      break;
 			case 'pong':
 				message.channel.send('Ping!');
 			break;
@@ -150,69 +142,80 @@ client.on('message', function(message){
 					message.channel.send('Invalid formula!');
 				}
 			break;
-			case 'dinkbothelp':
-				message.channel.send(helpMessage);
-			break;
 			case 'help':
 				message.channel.send(helpMessage);
 			break;
-			case 'poll':
-				if(pollMessage == ""){
-					pollAuthor = message.author.username;
-					pollFunction(message);
-				}
-				else{
-					message.channel.send("There's already an active poll!");
-				}
-			break;
-			case 'endpoll':
-				console.log('end poll');
-				if(message.author.username == pollAuthor){
-					console.log('ending poll');
-					newMessage = "The poll has ended and the results are in!\n```" + poll[0] + "```\n";
-					for(var i = 0; i < poll.length-1; i++){
-						newMessage += numToEmoji[i] + "`: " + poll[i+1] + " has: " + options[i.toString() + "%E2%83%A3"] + " votes!`\n";
-					}
-					message.channel.send(newMessage);
-					pollMessage = "";
-				}
-			break;
-         }
-     }
+    }
+  }
 });
 
-var options = [];
-var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
-var pollMessage = "";
-var pollAuthor;
-var poll;
+//Poll object
+//	author
+//	options
+//	question
+//	endPoll()
+//	setTimeout in constructor to automatically end the poll
+//	endTime
+//
+//List of poll objects in 2D array, first associated by user id and then associated by poll message id
 
-function pollFunction(message){
-	poll = message.content.replace("!poll ", "").split('\n');
-	var question = poll[0];
-	options = [];
-	var newMessage = 'React with the emoji of the option you choose!\n```' + question + "```\n";
-	if(poll.length > 11){
+var activePolls = [];
+var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+
+function Poll(message){
+	this.author = message.author.id;
+	var newPoll = message.content.replace("!poll ", "").split('\n');
+	this.question = newPoll[0];
+	this.pollMessage;
+	this.options = [];
+	var embed = {
+		title: '\n\n**__' + newPoll[0] + "__**\n\n",
+		fields:[],
+		footer:{"text":"React with the emoji you choose!"},
+		"thumbnail": {
+			"url": message.author.avatarURL
+		}
+	};
+	if(newPoll.length > 11){
 		message.reply('Error: too many options! You can use a maximum of 10!');
 	}
 	else{
 		var pollReactions;
-		for(var i = 0; i < poll.length-1; i++){
-			options[i.toString() + "%E2%83%A3"] = 0;
-			newMessage += numToEmoji[i] + '`: ' + poll[i+1] + "`\n";
+		for(var i = 0; i < newPoll.length-1; i++){
+			this.options[i.toString() + "%E2%83%A3"] = 0;
+			embed.fields.push({"name": "Option " + i,"value":numToEmoji[i] + ": " + newPoll[i+1]});
 		}
-		console.log('Created poll:\n' + newMessage);
-		message.channel.send(newMessage).then(newPollMessage => {
-			pollMessage = newPollMessage;
+		console.log('Created poll:\n' + embed);
+		message.channel.send({embed}).then(newPollMessage => {
+			this.pollMessage = newPollMessage;
 		});
+	}
+	message.delete();
+}
+
+function endPoll(message){
+	if(activePolls[message.author.id] == undefined || activePolls[message.author.id].length == 0){
+		message.channel.reply("you don't have any active polls");
+	}
+	else if(activePolls[message.author.id].length = 1){
+		activePolls[message.author.id][0].endPoll();
+	}
+	else{
+		var embed = {
+			title:"Which poll would you like to end?",
+			footer:{text:"React with the emoji of the poll question you want to end"}
+		};
+		for(var i = 0; i < activePolls[message.author.id].length; i++){
+
+		}
 	}
 }
 
 client.on('messageReactionAdd', (reaction, user) =>{
 	console.log('reaction added!');
 	console.log(reaction.emoji.identifier);
-	if(reaction.message.content = pollMessage){
-		options[reaction.emoji.identifier] += 1;
+	if(activePolls[reaction.message.author.id][reaction.message.id] != undefined){
+		reponses[reaction.message.id][reaction.emoji.identifier] += 1;
 	}
 });
 
