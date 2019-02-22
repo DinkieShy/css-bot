@@ -7,12 +7,21 @@ var execFile = require('child_process').execFile;
 var https = require('https');
 var emojis = require("./emojis.json");
 var fs = require("fs");
+var pollMessages = [];
 var helpMessage = "Commands:\n!DinkbotHelp  or !help - display this menu\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around\n!studentfinance - How many days are left until the next student finance payment?\n!poll - get info on how to make a poll!\n\nCommands are *not* case sensitive!";
 
 client.login(auth.token);
 
 client.on('ready', function(){
 	console.log(`Logged in as ${client.user.tag}!`);
+	loadPolls();
+	for(var i = 0; i < pollUsers.length; i++){
+		for(var ii = 0; ii < pollUsers[i].polls.length; ii++){
+			pollMessages.push(pollUsers[i].polls[ii].guild).channels.get(pollUsers[i].polls[ii].channel).fetchMessage(pollUsers[i].polls[ii].message).then(message =>{
+      pollMessages.push(message);
+    });
+		}
+	}
 });
 
 client.on('message', function(message){
@@ -22,7 +31,7 @@ client.on('message', function(message){
     args = args.splice(1);
     switch(cmd){
 			case 'poll':
-				if(args.length == 0){
+				if(args.length <= 1){
 					message.channel.send("How to use !poll:\n\nType !poll followed by your question, i.e. \"!poll is this command awesome?\"\nThen add up to 10 options on new lines, for example\n\"!poll is this command awesome?\nYes\nYes\nYes\nYes\"\n\nThen, when you're done, type !displayPolls and choose which poll to end to count up the votes!");
 				}
 				else{
@@ -166,28 +175,12 @@ var pollUsers = [];
 var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
 
 function createPoll(message){
-	if(getPollUser(message.author.id) == -1){
+	var userMakingPoll = getPollUser(message.author.id);
+	if(userMakingPoll == -1){
 		pollUsers.push(new PollUser(message));
-		pollUsers[getPollUser(message.author.id)].polls.push(new Poll(message));
 	}
-	else{
-		pollUsers[getPollUser(message.author.id)].polls.push(new Poll(message));
-	}
-}
-
-function PollUser(message){
-	this.id = message.author.id;
-	this.polls = [];
-}
-
-function Poll(message){
-	this.author = message.author.id;
 	var newPoll = message.content.replace("!poll ", "").split('\n');
-	this.question = newPoll[0];
-	this.channel = message.channel.id;
-	this.guild = message.guild.id;
-	this.message;
-	this.options = [];
+	pollUsers[userMakingPoll].polls.push(new Poll(message, newPoll[0]));
 	var embed = {
 		title: '\n\n**__' + newPoll[0] + "__**\n\n",
 		fields:[],
@@ -202,19 +195,33 @@ function Poll(message){
 	else{
 		var pollReactions;
 		for(var i = 0; i < newPoll.length-1; i++){
-			this.options.push({"count":0, "question":newPoll[i+1]});
+			pollUsers[userMakingPoll].polls[pollUsers[userMakingPoll].polls.length-1].options.push({count:0, question:newPoll[i+1]});
 			embed.fields.push({"name": "Option " + i,"value":numToEmoji[i] + ": " + newPoll[i+1]});
 		}
 		console.log('Created poll:\n' + embed);
 		message.channel.send({embed}).then(async function(newPollMessage){
-			this.pollMessage = newPollMessage.id;
+			pollUsers[userMakingPoll].polls[pollUsers[userMakingPoll].polls.length-1].message = newPollMessage.id;
 			for(var i = 0; i < newPoll.length-1;){
 				await newPollMessage.react(i.toString() + "%E2%83%A3").catch(console.error).then(i++);
-				console.log("added emoji")
+				console.log("added emoji");
 			}
 		});
 	}
 	message.delete();
+}
+
+function PollUser(message){
+	this.id = message.author.id;
+	this.polls = [];
+}
+
+function Poll(message, question){
+	this.author = message.author.id;
+	this.question = question;
+	this.channel = message.channel.id;
+	this.guild = message.guild.id;
+	this.message;
+	this.options = [];
 }
 
 function displayPolls(message, offset = 0, pollsToRemove = []){
@@ -224,7 +231,6 @@ function displayPolls(message, offset = 0, pollsToRemove = []){
 		footer:{text:"React with the emoji of the poll question you want to end"}
 	};
 	for(var i = offset; i < offset + 5 && i < pollUsers[getPollUser(message.author.id)].polls.length; i++){
-		console.log(i);
 		embed.fields.push({"name": "Poll " + i,"value":numToEmoji[i-offset+1] + ": " + pollUsers[getPollUser(message.author.id)].polls[i].question});
 	}
 	message.channel.send({embed}).then(async function(newMessage){
@@ -259,7 +265,7 @@ function displayPolls(message, offset = 0, pollsToRemove = []){
 				}
 				savePolls();
 				if(pollsToRemove.length > 0){
-					message.channel.send("Successfully removed polls!");
+					message.channel.send("Successfully ended polls!");
 				}
 			}
 			newMessage.delete();
@@ -279,13 +285,19 @@ function displayPolls(message, offset = 0, pollsToRemove = []){
 
 function endPoll(pollToEnd, message){
 	var embed = {
-		title:"The results are in!",
+		title:"The results are in!\n" + pollToEnd.question,
 		fields:[]
 	};
 	for(var i = 0; i < pollToEnd.options.length; i++){
-		embed.fields.push({"name":pollToEnd.options[i]["question"], "value":" has " + pollToEnd.options[i]["count"] + " votes!"});
+		if(pollToEnd.options[i].count != 1){
+			embed.fields.push({"name":pollToEnd.options[i].question, "value":" has " + pollToEnd.options[i].count + " votes!"});
+		}
+		else{
+			embed.fields.push({"name":pollToEnd.options[i].question, "value":" has " + pollToEnd.options[i].count + " vote!"});
+		}
 	}
 	client.guilds.get(pollToEnd.guild).channels.get(pollToEnd.channel).send({embed});
+	savePolls();
 }
 
 function savePolls(){
@@ -317,12 +329,9 @@ function getPollUser(id){
 client.on('messageReactionAdd', (reaction, user) =>{
 	for(var i = 0; i < pollUsers.length; i++){
 		for(var ii = 0; ii < pollUsers[i].polls.length; ii++){
-			console.log(reaction.message.id + " " + pollUsers[i].polls[ii].message);
 			if(reaction.message.id == pollUsers[i].polls[ii].message){
-				console.log("adding vote");
-				if(user.bot == false){
-					pollUsers[i].polls[ii].options[parseInt(reaction.emoji.identifier)]["count"] += 1;
-					break;
+				if(user.bot == false && parseInt(reaction.emoji.identifier) < pollUsers[i].polls[ii].options.length){
+					pollUsers[i].polls[ii].options[parseInt(reaction.emoji.identifier)].count += 1;
 				}
 			}
 		}
@@ -330,15 +339,11 @@ client.on('messageReactionAdd', (reaction, user) =>{
 });
 
 client.on('messageReactionRemove', (reaction, user) =>{
-	console.log('reaction removed!');
-	console.log(reaction.emoji.identifier);
 	for(var i = 0; i < pollUsers.length; i++){
 		for(var ii = 0; ii < pollUsers[i].polls.length; ii++){
-			if(reaction.message.id == pollUsers[i].polls[ii].pollMessage){
-				console.log("reaction removed from poll");
-				if(user.bot == false){
-					pollUsers[i].polls[ii].options[parseInt(reaction.emoji.identifier)]["count"] -= 1;
-					break;
+			if(reaction.message.id == pollUsers[i].polls[ii].message){
+				if(user.bot == false && parseInt(reaction.emoji.identifier) < pollUsers[i].polls[ii].options.length){
+					pollUsers[i].polls[ii].options[parseInt(reaction.emoji.identifier)].count -= 1;
 				}
 			}
 		}
