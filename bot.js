@@ -17,8 +17,9 @@ client.on('ready', function(){
 	loadPolls();
 	for(var i = 0; i < pollUsers.length; i++){
 		for(var ii = 0; ii < pollUsers[i].polls.length; ii++){
-			pollMessages.push(pollUsers[i].polls[ii].guild).channels.get(pollUsers[i].polls[ii].channel).fetchMessage(pollUsers[i].polls[ii].message).then(message =>{
+			client.channels.get(pollUsers[i].polls[ii].channel).fetchMessage(pollUsers[i].polls[ii].message).then(message =>{
       pollMessages.push(message);
+			console.log("Poll message fetched");
     });
 		}
 	}
@@ -31,8 +32,8 @@ client.on('message', function(message){
     args = args.splice(1);
     switch(cmd){
 			case 'poll':
-				if(args.length <= 1){
-					message.channel.send("How to use !poll:\n\nType !poll followed by your question, i.e. \"!poll is this command awesome?\"\nThen add up to 10 options on new lines, for example\n\"!poll is this command awesome?\nYes\nYes\nYes\nYes\"\n\nThen, when you're done, type !displayPolls and choose which poll to end to count up the votes!");
+				if(args.length == 0){
+					message.channel.send("How to use !poll:\n\nType !poll followed by your question, i.e. \"!poll is this command awesome?\"\nThen add up to 10 options on new lines, for example\n\"!poll is this command awesome?\nYes\nYes\nYes\nYes\"\n\nThen, when you're done, type !endpoll and choose which poll to end to count up the votes!");
 				}
 				else{
 					createPoll(message);
@@ -178,6 +179,7 @@ function createPoll(message){
 	var userMakingPoll = getPollUser(message.author.id);
 	if(userMakingPoll == -1){
 		pollUsers.push(new PollUser(message));
+		userMakingPoll = getPollUser(message.author.id);
 	}
 	var newPoll = message.content.replace("!poll ", "").split('\n');
 	pollUsers[userMakingPoll].polls.push(new Poll(message, newPoll[0]));
@@ -201,6 +203,7 @@ function createPoll(message){
 		console.log('Created poll:\n' + embed);
 		message.channel.send({embed}).then(async function(newPollMessage){
 			pollUsers[userMakingPoll].polls[pollUsers[userMakingPoll].polls.length-1].message = newPollMessage.id;
+			savePolls();
 			for(var i = 0; i < newPoll.length-1;){
 				await newPollMessage.react(i.toString() + "%E2%83%A3").catch(console.error).then(i++);
 				console.log("added emoji");
