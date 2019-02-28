@@ -5,45 +5,50 @@ var acceptedRoleNames = ['first-year', 'second-year', 'third-year', 'postgraduat
 var auth = require('./auth.json');
 var execFile = require('child_process').execFile;
 var https = require('https');
+var emojis = require("./emojis.json");
+var fs = require("fs");
+var pollMessages = [];
 var helpMessage = "Commands:\n!DinkbotHelp  or !help - display this menu\n!roll xdy or !r xdy - roll x amount of y sided die\n!Ping - Pong!\n!Pong - Ping!\n!changerole [role] - Change your role! enter !changerole to find out what roles you can swap around\n!studentfinance - How many days are left until the next student finance payment?\n!poll - get info on how to make a poll!\n\nCommands are *not* case sensitive!";
 
 client.login(auth.token);
 
 client.on('ready', function(){
 	console.log(`Logged in as ${client.user.tag}!`);
+	loadPolls();
+	for(var i = 0; i < pollUsers.length; i++){
+		for(var ii = 0; ii < pollUsers[i].polls.length; ii++){
+			client.channels.get(pollUsers[i].polls[ii].channel).fetchMessage(pollUsers[i].polls[ii].message).then(message =>{
+      pollMessages.push(message);
+			console.log("Poll message fetched");
+    });
+		}
+	}
 });
 
 client.on('message', function(message){
 	if (message.content.toLowerCase().substring(0, 1) == '!'){
-        var args = message.content.toLowerCase().substring(1).split(' ');
-        var cmd = args[0];
-
-        args = args.splice(1);
-        switch(cmd){
+    var args = message.content.toLowerCase().substring(1).split(' ');
+    var cmd = args[0];
+    args = args.splice(1);
+    switch(cmd){
 			case 'poll':
 				if(args.length == 0){
-					message.channel.send("How to use !poll:\n\nType !poll followed by your question, i.e. \"!poll is this command awesome?\"\nThen add up to 10 options on new lines, for example\n\"!poll is this command awesome?\nYes\nYes\nYes\nYes\"\n\nThen, when you're done, type !endpoll to count up the votes!");
-				}
-				else if(pollMessage == ""){
-					pollAuthor = message.author.username;
-					pollFunction(message);
+					message.channel.send("How to use !poll:\n\nType !poll followed by your question, i.e. \"!poll is this command awesome?\"\nThen add up to 10 options on new lines, for example\n\"!poll is this command awesome?\nYes\nYes\nYes\nYes\"\n\nThen, when you're done, type !endpoll and choose which poll to end to count up the votes!");
 				}
 				else{
-					message.channel.send("There's already an active poll!");
+					createPoll(message);
 				}
 			break;
+
 			case 'endpoll':
-				console.log('end poll');
-				if(message.author.username == pollAuthor){
-					console.log('ending poll');
-					newMessage = "The poll has ended and the results are in!\n```" + poll[0] + "```\n";
-					for(var i = 0; i < poll.length-1; i++){
-						newMessage += numToEmoji[i] + "`: " + poll[i+1] + " has: " + options[i.toString() + "%E2%83%A3"] + " votes!`\n";
-					}
-					message.channel.send(newMessage);
-					pollMessage = "";
+				if(pollUsers[getPollUser(message.author.id)].polls.length > 0){
+					displayPolls(message);
+				}
+				else{
+					message.channel.send("You don't have any active polls!");
 				}
 			break;
+
 			case 'studentfinance':
 				https.get('https://studentfinancecountdown.com/json/left/', function(res){ //ping the url and get a response
 					var body = '';
@@ -122,9 +127,9 @@ client.on('message', function(message){
 					message.channel.send("Only Dinkie can do that!");
 				}
 			break;
-            case 'ping':
-                message.channel.send('Pong!');
-            break;
+      case 'ping':
+        message.channel.send("My current response time is: " + client.ping + "ms");
+      break;
 			case 'pong':
 				message.channel.send('Ping!');
 			break;
@@ -150,77 +155,201 @@ client.on('message', function(message){
 					message.channel.send('Invalid formula!');
 				}
 			break;
-			case 'dinkbothelp':
-				message.channel.send(helpMessage);
-			break;
 			case 'help':
 				message.channel.send(helpMessage);
 			break;
-			case 'poll':
-				if(pollMessage == ""){
-					pollAuthor = message.author.username;
-					pollFunction(message);
-				}
-				else{
-					message.channel.send("There's already an active poll!");
-				}
-			break;
-			case 'endpoll':
-				console.log('end poll');
-				if(message.author.username == pollAuthor){
-					console.log('ending poll');
-					newMessage = "The poll has ended and the results are in!\n```" + poll[0] + "```\n";
-					for(var i = 0; i < poll.length-1; i++){
-						newMessage += numToEmoji[i] + "`: " + poll[i+1] + " has: " + options[i.toString() + "%E2%83%A3"] + " votes!`\n";
-					}
-					message.channel.send(newMessage);
-					pollMessage = "";
-				}
-			break;
-         }
-     }
+    }
+  }
 });
 
-var options = [];
-var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
-var pollMessage = "";
-var pollAuthor;
-var poll;
+//Poll object
+//	author
+//	options
+//	question
+//	displayPolls()
+//	setTimeout in constructor to automatically end the poll
+//	endTime
+//
+//List of poll objects in 2D array, first associated by user id and then associated by poll message id
 
-function pollFunction(message){
-	poll = message.content.replace("!poll ", "").split('\n');
-	var question = poll[0];
-	options = [];
-	var newMessage = 'React with the emoji of the option you choose!\n```' + question + "```\n";
-	if(poll.length > 11){
-		message.reply('Error: too many options! You can use a maximum of 10!');
+var pollUsers = [];
+var numToEmoji = [":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+
+function createPoll(message){
+	var userMakingPoll = getPollUser(message.author.id);
+	if(userMakingPoll == -1){
+		pollUsers.push(new PollUser(message));
+		userMakingPoll = getPollUser(message.author.id);
+	}
+	var newPoll = message.content.replace("!poll ", "").split('\n');
+	pollUsers[userMakingPoll].polls.push(new Poll(message, newPoll[0]));
+	var embed = {
+		title: '\n\n**__' + newPoll[0] + "__**\n\n",
+		fields:[],
+		footer:{"text":"React with the emoji you choose!"},
+		"thumbnail": {
+			"url": message.author.avatarURL
+		}
+	};
+	if(newPoll.length > 11){
+		message.reply('Error: too many options! You can have a maximum of 10!');
 	}
 	else{
 		var pollReactions;
-		for(var i = 0; i < poll.length-1; i++){
-			options[i.toString() + "%E2%83%A3"] = 0;
-			newMessage += numToEmoji[i] + '`: ' + poll[i+1] + "`\n";
+		for(var i = 0; i < newPoll.length-1; i++){
+			pollUsers[userMakingPoll].polls[pollUsers[userMakingPoll].polls.length-1].options.push({count:0, question:newPoll[i+1]});
+			embed.fields.push({"name": "Option " + i,"value":numToEmoji[i] + ": " + newPoll[i+1]});
 		}
-		console.log('Created poll:\n' + newMessage);
-		message.channel.send(newMessage).then(newPollMessage => {
-			pollMessage = newPollMessage;
+		console.log('Created poll:\n' + embed);
+		message.channel.send({embed}).then(async function(newPollMessage){
+			pollUsers[userMakingPoll].polls[pollUsers[userMakingPoll].polls.length-1].message = newPollMessage.id;
+			savePolls();
+			for(var i = 0; i < newPoll.length-1;){
+				await newPollMessage.react(i.toString() + "%E2%83%A3").catch(console.error).then(i++);
+				console.log("added emoji");
+			}
 		});
 	}
+	message.delete();
+}
+
+function PollUser(message){
+	this.id = message.author.id;
+	this.polls = [];
+}
+
+function Poll(message, question){
+	this.author = message.author.id;
+	this.question = question;
+	this.channel = message.channel.id;
+	this.guild = message.guild.id;
+	this.message;
+	this.options = [];
+}
+
+function displayPolls(message, offset = 0, pollsToRemove = []){
+	var embed = {
+		title:"Which poll would you like to end?",
+		fields:[],
+		footer:{text:"React with the emoji of the poll question you want to end"}
+	};
+	for(var i = offset; i < offset + 5 && i < pollUsers[getPollUser(message.author.id)].polls.length; i++){
+		embed.fields.push({"name": "Poll " + i,"value":numToEmoji[i-offset+1] + ": " + pollUsers[getPollUser(message.author.id)].polls[i].question});
+	}
+	message.channel.send({embed}).then(async function(newMessage){
+		var done;
+		var filter = (reaction, user) => user.id == message.author.id
+		var collector = newMessage.createReactionCollector(filter);
+		collector.on('collect', r => {
+			if(r.emoji.name == emojis["white_check_mark"]){
+				done = true;
+				collector.stop();
+			}
+			else if(r.emoji.name == emojis["arrow_right"]){
+				done = false;
+				collector.stop();
+				displayPolls(message, offset+5, pollsToRemove);
+			}
+			else if(r.emoji.name == emojis["arrow_left"]){
+				done = false;
+				collector.stop();
+				displayPolls(message, offset-5, pollsToRemove);
+			}
+			else if(pollsToRemove.indexOf(parseInt(r.emoji.identifier[0])-1+offset) == -1){
+				pollsToRemove.push(parseInt(r.emoji.identifier[0])-1+offset);
+			}
+		});
+		collector.on('end', function(){
+			if(done){
+				pollsToRemove.sort(function(a, b){return b-a});
+				for(var i = 0; i < pollsToRemove.length; i++){
+					endPoll(pollUsers[getPollUser(message.author.id)].polls[pollsToRemove[i]], message);
+					pollUsers[getPollUser(message.author.id)].polls.splice(pollsToRemove[i], 1);
+				}
+				savePolls();
+				if(pollsToRemove.length > 0){
+					message.channel.send("Successfully ended polls!");
+				}
+			}
+			newMessage.delete();
+		});
+		if(offset - 5 >= 0){
+			await newMessage.react(emojis["arrow_left"]).catch(console.error);
+		}
+		for(var i = offset; i < pollUsers[getPollUser(message.author.id)].polls.length && i < offset + 5;){
+			await newMessage.react((i-offset+1).toString() + "%E2%83%A3").then(i++).catch(console.error);
+		}
+		if(pollUsers[getPollUser(message.author.id)].polls.length > offset + 5){
+			await newMessage.react(emojis["arrow_right"]).catch(console.error);
+		}
+		done = await newMessage.react(emojis["white_check_mark"]).catch(console.error);
+	});
+}
+
+function endPoll(pollToEnd, message){
+	var embed = {
+		title:"The results are in!\n" + pollToEnd.question,
+		fields:[]
+	};
+	for(var i = 0; i < pollToEnd.options.length; i++){
+		if(pollToEnd.options[i].count != 1){
+			embed.fields.push({"name":pollToEnd.options[i].question, "value":" has " + pollToEnd.options[i].count + " votes!"});
+		}
+		else{
+			embed.fields.push({"name":pollToEnd.options[i].question, "value":" has " + pollToEnd.options[i].count + " vote!"});
+		}
+	}
+	client.guilds.get(pollToEnd.guild).channels.get(pollToEnd.channel).send({embed});
+	savePolls();
+}
+
+function savePolls(){
+  fs.writeFileSync("./pollUsers.json", JSON.stringify(pollUsers));
+}
+
+function loadPolls(){
+  try{
+    pollUsers = JSON.parse(fs.readFileSync("./pollUsers.json"));
+  }
+  catch(error){
+    var date = new Date();
+    fs.appendFileSync("./errorReadingPollFiles.json", "\n\n" + date.toString() + "\n");
+    fs.appendFileSync("./errorReadingPollFiles.json", error);
+    console.error(error);
+    pollUsers = [];
+  }
+}
+
+function getPollUser(id){
+  for(var i = 0; i < pollUsers.length; i++){
+    if(pollUsers[i].id == id){
+      return i;
+    }
+  }
+  return -1;
 }
 
 client.on('messageReactionAdd', (reaction, user) =>{
-	console.log('reaction added!');
-	console.log(reaction.emoji.identifier);
-	if(reaction.message.content = pollMessage){
-		options[reaction.emoji.identifier] += 1;
+	for(var i = 0; i < pollUsers.length; i++){
+		for(var ii = 0; ii < pollUsers[i].polls.length; ii++){
+			if(reaction.message.id == pollUsers[i].polls[ii].message){
+				if(user.bot == false && parseInt(reaction.emoji.identifier) < pollUsers[i].polls[ii].options.length){
+					pollUsers[i].polls[ii].options[parseInt(reaction.emoji.identifier)].count += 1;
+				}
+			}
+		}
 	}
 });
 
 client.on('messageReactionRemove', (reaction, user) =>{
-	console.log('reaction added!');
-	console.log(reaction.emoji.identifier);
-	if(reaction.message.content = pollMessage){
-		options[reaction.emoji.identifier] -= 1;
+	for(var i = 0; i < pollUsers.length; i++){
+		for(var ii = 0; ii < pollUsers[i].polls.length; ii++){
+			if(reaction.message.id == pollUsers[i].polls[ii].message){
+				if(user.bot == false && parseInt(reaction.emoji.identifier) < pollUsers[i].polls[ii].options.length){
+					pollUsers[i].polls[ii].options[parseInt(reaction.emoji.identifier)].count -= 1;
+				}
+			}
+		}
 	}
 });
 
@@ -251,7 +380,7 @@ function rollDie(numberOfDice, numberOfSides, modifier){
 
 client.on('messageUpdate', function(oldMessage, newMessage){ //Audit log
 	auditChannel = oldMessage.guild.channels.find('name', 'audit-log');
-	if(auditChannel != undefined){
+	if(auditChannel != undefined && oldMessage.content != newMessage.content){
 		var time = "";
 		time += newMessage.createdAt.getDate() + "/" + (newMessage.createdAt.getMonth()+1);
 		time += " at " + newMessage.createdAt.getHours() + ":" + newMessage.createdAt.getMinutes() + ":" + newMessage.createdAt.getSeconds();
